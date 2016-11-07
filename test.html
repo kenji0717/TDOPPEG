@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ja" lang="ja">
+<head>
+  <meta charset="UTF-8"/>
+  <title>TDOP6</title>
+  <link rel="stylesheet" type="text/css" href="./lib/codemirror/lib/codemirror.css"/>
+  <link rel="stylesheet" type="text/css" href="./lib/codemirror/addon/hint/show-hint.css"/>
+  <link rel="stylesheet" type="text/css" href="./terminalize.css"/>
+  <link rel="stylesheet" type="text/css" href="./test.css"/>
+  <script src="./lib/codemirror/lib/codemirror.js"></script>
+  <script src="./lib/codemirror/addon/hint/show-hint.js"></script>
+  <script src="./lib/codemirror/mode/clike/clike.js"></script>
+  <script src="tokens.js"></script>
+  <script src="parse.js"></script>
+  <script src="terminalize.js"></script>
+  <script src="StackMachine.js"></script>
+  <script>
+  var sm;//StackMachine
+  var editor;//プログラムのエディタ
+  var term;//標準入出力のための端末
+  var uiInfo;//ステップ実行時のUI変更のための情報を表示
+  var prog = "";//ニーモニック(マシン語)が保存される変数
+
+// Transform a token object into an exception object and throw it.
+Object.prototype.error = function (message, t) {
+    t = t || this;
+    t.name = "SyntaxError";
+    t.message = message;
+    throw t;
+};
+
+  //VMが標準出力への出力のために使用する関数
+  function printLine(str) {
+    term.write(str);
+  }
+
+  //ステップ実行時のUI変更のための情報を表示する関数
+  function printUIInfo(uiData) {
+    var s = "";
+    s = s + "行番号=" + uiData.lineNumber + "\n";
+    s = s + "プログラムポインタ="+uiData.programPointer+"\n";
+    s = s + "スタック[";
+    for (var i=0;i<uiData.stack.length;i++) {
+      s = s + uiData.stack[i]+", ";
+    }
+    s = s + "]\n";
+    s = s + makeActRecInfo(uiData.actRec);
+    s = s + "次に実行される命令: " + uiData.instruction + "\n";
+    //uiInfo.value = uiInfo.value + s;
+    uiInfo.value = s;
+    uiInfo.scrollTop = uiInfo.scrollHeight;
+  }
+
+  function makeActRecInfo(actRec) {
+    var vars = {};
+    var s = "";
+    s = s + "駆動レコード[\n";
+    var nowActRec = actRec;
+    while (nowActRec != null) {
+      for (var i=0;i<nowActRec.vars.length;i++) {
+        s = s + nowActRec.vars[i][0]+"="+nowActRec.vars[i][1]+", ";
+      }
+      s = s + "\n";
+      nowActRec = nowActRec.parent;
+    }
+    s = s + "]\n";
+    return s;
+  }
+
+  function init() {
+    //***** CodeMirror用のコード：ここから *****
+    var ta = document.getElementById("source");
+    var option = {
+      lineNumbers: true,
+      matchBrackets: true,
+      mode: "text/x-csrc",
+      indentUnit: 4
+    };
+    editor = CodeMirror.fromTextArea(ta,option);
+    var mac = CodeMirror.keyMap.default == CodeMirror.keyMap.macDefault;
+    CodeMirror.keyMap.default[(mac ? "Cmd" : "Ctrl") + "-Space"] = "autocomplete";
+    //***** CodeMirror用のコード：ここまで *****
+
+    term = terminalize("stdio");
+    term.setPrompt('');
+    uiInfo = document.getElementById("uiInfo");
+    var setBPButton = document.getElementById("setBP");
+    //setBPButton.checked = false;
+    setBPButton.onclick = setBPButtonClicked;
+    var compileButton = document.getElementById("compile");
+    compileButton.onclick = compileClicked;
+    var exec = document.getElementById("exec");
+    exec.onclick = execClicked;
+
+    sm = new StackMachine(printLine,printUIInfo);
+    term.addInputListener(function(str){sm.input(str);});
+  }
+
+  function setBPButtonClicked() {
+    var setBP = document.getElementById("setBP");
+    if (setBP.checked) {
+        var a = sm.setAllBreakPoints();
+        alert("設定されたBP数:"+a.length);
+    } else {
+        var a = sm.clearAllBreakPoints();
+        alert("解除されたBP数:"+a.length);
+    }
+  }
+
+  function compileClicked() {
+    editor.save();
+    var code = "";
+    try {
+      var parse = make_parse();
+      var src = document.getElementById('source').value;
+      var stmts = parse(src);
+      for (var i=0;i<stmts.length;i++) {
+        code = code + stmts[i].code();
+      }
+      alert("コンパイル成功\n");
+    } catch(e) {
+      var ce = "" + e.row + "行目の" + e.col
+          + "文字目でエラーが検出されました．\n"
+          + "" + e.message + "\n";
+      alert(ce);
+      code = "//コンパイルエラー\n";
+    }
+    prog = code;
+
+    term.clear();
+    uiInfo.value = "";
+    var setBP = document.getElementById("setBP");
+    setBP.checked = false;
+    sm.init(prog);
+  }
+
+  function execClicked() {
+    execVM();
+  }
+  </script>
+<body onload="init();">
+
+  <h1>TDOP6</h1>
+  <p><a href="./memo.xhtml">メモ</a>|<a href="./TDOP6.zip">Download</a></p>
+
+  <textarea id="source" cols="40" rows="10">
+//サンプルのC言語のソース
+int i,n;
+printf("繰り返し回数を入力:");
+scanf("%d",&n);
+for (i=0;i<n;i++) {
+    printf("Hello World!\n");
+}
+  </textarea>
+
+  <textarea id="uiInfo" cols="20" rows="10">
+  </textarea>
+
+<br/>
+
+<input id="setBP" type="checkbox" value="false">set BP</input>
+<input id="compile" type="button" value="コンパイル"/>
+<input id="prog" type="button" onClick="alert(prog);console.log(prog);" value="(マシン語)"/>
+<input id="exec" type="button" value="(ステップ)実行"/>
+
+  <div id="stdio">
+  </div>
+
+</body>
+</html>

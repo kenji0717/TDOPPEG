@@ -1,0 +1,50 @@
+/*
+ * どんなデザインでも必ず設定したいスタイル
+ * <html lang="ja" xml:lang="ja">とかしないと効果が無い場合も
+ * あるので注意．それと円マークだけど，HTMLはこれから全て
+ * UTF-8で書くことにして，円マークが使いたくなったら
+ * Unicodeで定義されている「U+00A5」を使うか「&yen;」
+ * を使うことにしよう．(U+00A5をここにコピペしておく「¥」)
+ */
+
+body {
+  /* 以下の2行は両端揃の設定lang="ja" xml:lang="ja"が必要 */
+  text-align: justify;
+  text-justify: inter-ideograph;
+  line-height: 1.2 /* lang="ja" xml:lang="ja" だと広がるっぽいので */
+}
+
+p {
+  text-indent: 1em !important; /* 段落最初は一文字字下げ */
+}
+
+/* ----- */
+
+textarea , pre {
+  -moz-tab-size: 4;
+  -o-tab-size: 4;
+  tab-size: 4;
+}
+
+.CodeMirror {
+  border: 1px solid black;
+  /* width: 30em; */
+  /* height: 25ex; */
+  width: 300px;
+  height: 150px;
+  display: inline-block;
+}
+
+/*----- for terminalize -----*/
+
+#stdio {
+  background: #000;
+  color: #fff;
+  font-family: "Osaka-mono", "Osaka-等幅", "ＭＳ ゴシック", "Consolas", "Courier New", monospace;
+  font-size: 14px;
+  /* width: 30em; */
+  /* height: 25ex; */
+  width: 300px;
+  height: 150px;
+}
+
