@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ja" lang="ja">
 <head>
   <meta charset="UTF-8"/>
-  <title>TDOP6</title>
+  <title>TDOPPEG</title>
   <link rel="stylesheet" type="text/css" href="./lib/codemirror/lib/codemirror.css"/>
   <link rel="stylesheet" type="text/css" href="./lib/codemirror/addon/hint/show-hint.css"/>
   <link rel="stylesheet" type="text/css" href="./terminalize.css"/>
@@ -29,7 +29,7 @@ Object.prototype.error = function (message, t) {
     throw t;
 };
 
-  //VMが標準出力への出力のために使用する関数
+  //StackMachineが標準出力への出力のために使用する関数
   function printLine(str) {
     term.write(str);
   }
@@ -135,13 +135,12 @@ Object.prototype.error = function (message, t) {
   }
 
   function execClicked() {
-    execVM();
+    sm.exec();
   }
   </script>
 <body onload="init();">
 
-  <h1>TDOP6</h1>
-  <p><a href="./memo.xhtml">メモ</a>|<a href="./TDOP6.zip">Download</a></p>
+  <h1>TDOPPEG</h1>
 
   <textarea id="source" cols="40" rows="10">
 //サンプルのC言語のソース

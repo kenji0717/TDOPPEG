@@ -368,7 +368,43 @@ var make_parse = function () {
         var s = "";
         s = s + 'GET ' + this.first.value + "\n";
         s = s + this.second.code();
-        s = s + "MOD\n";
+        s = s + "AND\n";
+        s = s + "DUP\n";
+        s = s + 'SET ' + this.first.value + "\n";
+        return s;
+    });
+    assignment("^=",function() {
+        var s = "";
+        s = s + 'GET ' + this.first.value + "\n";
+        s = s + this.second.code();
+        s = s + "XOR\n";
+        s = s + "DUP\n";
+        s = s + 'SET ' + this.first.value + "\n";
+        return s;
+    });
+    assignment("|=",function() {
+        var s = "";
+        s = s + 'GET ' + this.first.value + "\n";
+        s = s + this.second.code();
+        s = s + "OR\n";
+        s = s + "DUP\n";
+        s = s + 'SET ' + this.first.value + "\n";
+        return s;
+    });
+    assignment("<<=",function() {
+        var s = "";
+        s = s + 'GET ' + this.first.value + "\n";
+        s = s + this.second.code();
+        s = s + "SL\n";
+        s = s + "DUP\n";
+        s = s + 'SET ' + this.first.value + "\n";
+        return s;
+    });
+    assignment(">>=",function() {
+        var s = "";
+        s = s + 'GET ' + this.first.value + "\n";
+        s = s + this.second.code();
+        s = s + "SR\n";
         s = s + "DUP\n";
         s = s + 'SET ' + this.first.value + "\n";
         return s;
@@ -386,13 +422,13 @@ var make_parse = function () {
         s = s + this.first.code();
         s = s + "PUSH 0\n";//下と2つ合せて
         s = s + "EQ\n";//論理否定
-        s = s + "IFJUMP " + label_count + "\n";
+        s = s + "IFJUMP L" + label_count + "\n";
         s = s + this.second.code();
-        s = s + "JUMP " + (label_count + 1) + "\n";
-        s = s + "LABEL " + label_count + "\n";
+        s = s + "JUMP L" + (label_count + 1) + "\n";
+        s = s + "NOP #@LABEL L" + label_count + "\n";
         label_count++;
         s = s + this.third.code();
-        s = s + "LABEL " + label_count + "\n";
+        s = s + "NOP #@LABEL L" + label_count + "\n";
         label_count++;
         return s;
     });
@@ -473,13 +509,36 @@ var make_parse = function () {
         return s;
     });
 
+    //論理演算子より優先順位が高く，
+    //比較演算子よりは低い．で，&，^，|
+    //の順番なので，それぞれ37,35,33ということで
+    infixr("|", 33,null,function() {
+        var s = this.first.code();
+        s = s + this.second.code();
+        s = s + "OR\n";
+        return s;
+    });
+    infixr("^", 35,null,function() {
+        var s = this.first.code();
+        s = s + this.second.code();
+        s = s + "XOR\n";
+        return s;
+    });
+    infixr("&", 37,null,function() {
+        var s = this.first.code();
+        s = s + this.second.code();
+        s = s + "AND\n";
+        return s;
+    });
+
+
     infixr("==", 40,null,function() {
         var s = this.first.code();
         s = s + this.second.code();
         s = s + "EQ\n";
         return s;
     });
-    infixr("!==", 40,null,function() {
+    infixr("!=", 40,null,function() {
         var s = this.first.code();
         s = s + this.second.code();
         s = s + "NEQ\n";
@@ -507,6 +566,21 @@ var make_parse = function () {
         var s = this.first.code();
         s = s + this.second.code();
         s = s + "GE\n";
+        return s;
+    });
+
+    //比較演算子より優先順位が高くて
+    //加減算より低いので45ということで
+    infix("<<",45,null,function() {
+        var s = this.first.code();
+        s = s + this.second.code();
+        s = s + "SL\n";
+        return s;
+    });
+    infix(">>",45,null,function() {
+        var s = this.first.code();
+        s = s + this.second.code();
+        s = s + "SR\n";
         return s;
     });
 
@@ -626,6 +700,7 @@ var make_parse = function () {
         return s;
     });
     //prefix("typeof");
+    //prefix("&");//今はscanfでよみとばすだけにしてる
 
     prefix("(", function () {
         var e = expression(0);
@@ -803,30 +878,31 @@ var make_parse = function () {
         var label_count_tmp = label_count;
         if (this.third == null) {
             label_count += 1;
-s = s + "LINE " + this.row + "\n";
-s = s + "BP\n";
+s = s + "NOP #@LABEL " + this.row + "\n";
+//s = s + "BP\n";
             s = s + this.first.code();
             s = s + "PUSH 0\n";//下と2つ合せて
             s = s + "EQ\n";//論理否定
-            s = s + "IFJUMP " + label_count_tmp + "\n";
+            s = s + "IFJUMP L" + label_count_tmp + "\n";
             s = s + this.second.code();
-            s = s + "LABEL " + label_count_tmp + "\n";
+            s = s + "NOP #@LABEL L" + label_count_tmp + "\n";
         } else {
             label_count += 2;
             s = s + this.first.code();
-s = s + "LINE " + this.row + "\n";
-s = s + "BP\n";
+s = s + "NOP #@LABEL " + this.row + "\n";
+//s = s + "BP\n";
             s = s + "PUSH 0\n";//下と2つ合せて
             s = s + "EQ\n";//論理否定
-            s = s + "IFJUMP " + label_count_tmp + "\n";
+            s = s + "IFJUMP L" + label_count_tmp + "\n";
             s = s + this.second.code();
-            s = s + "JUMP " + (label_count_tmp + 1) + "\n";
-            s = s + "LABEL " + label_count_tmp + "\n";
+            s = s + "JUMP L" + (label_count_tmp + 1) + "\n";
+            s = s + "NOP #@LABEL L" + label_count_tmp + "\n";
 if (this.third.id!=="if") {
-s = s + "LINE " + this.third.row + "\n";
-s = s + "BP\n"; }
+s = s + "NOP #@LABEL " + this.third.row + "\n";
+//s = s + "BP\n";
+}
             s = s + this.third.code();
-            s = s + "LABEL " + (label_count_tmp + 1) + "\n";
+            s = s + "NOP #@LABEL L" + (label_count_tmp + 1) + "\n";
         }
         return s;
     });
@@ -873,14 +949,14 @@ s = s + "BP\n"; }
         for (var i=0;i<cases.length;i++) {
             s = s + cases[i].first.code();
             s = s + "EQ\n";
-            s = s + "IFJUMP " + cases[i].label_num + "\n";
+            s = s + "IFJUMP L" + cases[i].label_num + "\n";
         }
         if (theDefault != null) {
-            s = s + "JUMP " + theDefault.label_num + "\n";
+            s = s + "JUMP L" + theDefault.label_num + "\n";
         }
-        s = s + "JUMP " + break_label + "\n";
+        s = s + "JUMP L" + break_label + "\n";
         s = s + this.second.code();
-        s = s + "LABEL " + break_label + "\n";
+        s = s + "NOP #@LABEL L" + break_label + "\n";
         return s;
     });
 
@@ -894,7 +970,7 @@ s = s + "BP\n"; }
         //ここが実行される前に"witch"のシンボルのcode関数で
         //this.label_numに適切なラベル番号が設定されているはず．
         var s = "";
-        s = s + "LABEL " + this.label_num + "\n";
+        s = s + "NOP #@LABEL L" + this.label_num + "\n";
         s = s + this.second.code();
         return s;
     });
@@ -908,7 +984,7 @@ s = s + "BP\n"; }
         //ここが実行される前に"witch"のシンボルのcode関数で
         //this.label_numに適切なラベル番号が設定されているはず．
         var s = "";
-        s = s + "LABEL " + this.label_num + "\n";
+        s = s + "NOP #@LABEL L" + this.label_num + "\n";
         s = s + this.first.code();
         return s;
     });
@@ -934,7 +1010,7 @@ s = s + "BP\n"; }
         return this;
     },function() {
         var s = "";
-        s = s + "JUMP " + break_label + "\n";
+        s = s + "JUMP L" + break_label + "\n";
         return s;
     });
 
@@ -944,7 +1020,7 @@ s = s + "BP\n"; }
         return this;
     },function() {
         var s = "";
-        s = s + "JUMP " + continue_label + "\n";
+        s = s + "JUMP L" + continue_label + "\n";
         return s;
     });
 
@@ -963,18 +1039,18 @@ s = s + "BP\n"; }
         var s = "";
         var label_count_tmp = label_count;
         label_count += 2;
-        s = s + "LABEL " + label_count_tmp + "\n";
+        s = s + "NOP #@LABEL L" + label_count_tmp + "\n";
         continue_label = label_count_tmp;
         break_label = (label_count_tmp + 1);//この時点で設定必用
-s = s + "LINE " + this.row + "\n";
-s = s + "BP\n";
+s = s + "NOP #@LABEL " + this.row + "\n";
+//s = s + "BP\n";
         s = s + this.first.code();
         s = s + "PUSH 0\n";//下と2つ合せて
         s = s + "EQ\n";//論理否定
-        s = s + "IFJUMP " + (label_count_tmp + 1) + "\n";
+        s = s + "IFJUMP L" + (label_count_tmp + 1) + "\n";
         s = s + this.second.code();
-        s = s + "JUMP " + label_count_tmp + "\n";
-        s = s + "LABEL " + (label_count_tmp + 1) + "\n";
+        s = s + "JUMP L" + label_count_tmp + "\n";
+        s = s + "NOP #@LABEL L" + (label_count_tmp + 1) + "\n";
         return s;
     });
 
@@ -997,8 +1073,8 @@ s = s + "BP\n";
         return this;
     },function() {
         var s = "";
-s = s + "LINE " + this.row + "\n";
-s = s + "BP\n";
+s = s + "NOP #@LABEL " + this.row + "\n";
+//s = s + "BP\n";
         s = s + this.first.code();
         s = s + "PRINT\n";
         for (var i=0;i<this.second.length;i++) {
@@ -1020,8 +1096,8 @@ s = s + "BP\n";
         return this;
     },function() {
         var s = "";
-s = s + "LINE " + this.row + "\n";
-//s = s + "BP\n";
+s = s + "NOP #@LABEL " + this.row + "\n";
+////s = s + "BP\n";
         if (this.first.value === "%d") {
             s = s + "INPUT_WAIT\n";
             s = s + "SCANI\n";
@@ -1069,15 +1145,15 @@ s = s + "LINE " + this.row + "\n";
         var label_count_tmp = label_count;
         label_count += 3;
         s = s + this.first.code();
-        s = s + "LABEL " + label_count_tmp + "\n";
+        s = s + "NOP #@LABEL L" + label_count_tmp + "\n";
         continue_label = (label_count_tmp + 1);
         break_label = (label_count_tmp + 2);//この時点で設定必用
-s = s + "LINE " + this.row + "\n";
-s = s + "BP\n";
+s = s + "NOP #@LABEL " + this.row + "\n";
+//s = s + "BP\n";
         s = s + this.second.code();
         s = s + "PUSH 0\n";//下と2つ合せて
         s = s + "EQ\n";//論理否定
-        s = s + "IFJUMP " + (label_count_tmp + 2) + "\n";
+        s = s + "IFJUMP L" + (label_count_tmp + 2) + "\n";
         if (this.oneStatement == true) {
             s = s + this.fourth.code();
         } else {
@@ -1085,10 +1161,10 @@ s = s + "BP\n";
                 s = s + this.fourth[i].code();
             }
         }
-        s = s + "LABEL " + (label_count_tmp + 1) + "\n";
+        s = s + "NOP #@LABEL L" + (label_count_tmp + 1) + "\n";
         s = s + this.third.code();
-        s = s + "JUMP " + label_count_tmp + "\n";
-        s = s + "LABEL " + (label_count_tmp + 2) + "\n";
+        s = s + "JUMP L" + label_count_tmp + "\n";
+        s = s + "NOP #@LABEL L" + (label_count_tmp + 2) + "\n";
         return s;
     });
 
@@ -1107,15 +1183,15 @@ s = s + "BP\n";
         var s = "";
         var label_count_tmp = label_count;
         label_count += 2;
-        s = s + "LABEL " + label_count_tmp + "\n";
+        s = s + "NOP #@LABEL L" + label_count_tmp + "\n";
         continue_label = label_count_tmp;
         break_label = (label_count_tmp + 1);//この時点で設定必用
-s = s + "LINE " + this.row + "\n";
-s = s + "BP\n";
+s = s + "NOP #@LABEL " + this.row + "\n";
+//s = s + "BP\n";
         s = s + this.first.code();
         s = s + this.second.code();
-        s = s + "IFJUMP " + label_count_tmp + "\n";
-        s = s + "LABEL " + (label_count_tmp + 1) + "\n";
+        s = s + "IFJUMP L" + label_count_tmp + "\n";
+        s = s + "NOP #@LABEL L" + (label_count_tmp + 1) + "\n";
         return s;
     });
 
